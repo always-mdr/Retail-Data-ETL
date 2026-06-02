@@ -1,50 +1,54 @@
 import pandas as pd
 import numpy as np
 import random
+import logging
 
-# Settings
-NUM_ROWS = 500
+logger = logging.getLogger(__name__)
 
-# 1. Generate Fake Data
-ids = list(range(1000, 1000 + NUM_ROWS))
-products = ['Laptop', 'Mouse', 'Monitor', 'Keyboard', 'Webcam', None] # Oops, missing products
-prices = {'Laptop': 1200, 'Mouse': 25, 'Monitor': 300, 'Keyboard': 50, 'Webcam': 80, None: 0}
-dates = pd.date_range(start='2024-01-01', periods=60).strftime('%Y-%m-%d').tolist()
-
-data = []
-
-for _ in range(NUM_ROWS):
-    prod = random.choice(products)
-    # 10% chance of a "Dirty" price (string with $)
-    if random.random() < 0.1:
-        price = f"${prices[prod]}"
-    else:
-        price = prices[prod]
+def generate_data(num_rows=5000, output_path='data/raw_sales.csv'):
+    logger.info(f"Generating {num_rows} rows of messy retail data...")
+    
+    ids = list(range(1000, 1000 + num_rows))
+    products = ['Laptop', 'Mouse', 'Monitor', 'Keyboard', 'Webcam', None]
+    prices = {'Laptop': 1200, 'Mouse': 25, 'Monitor': 300, 'Keyboard': 50, 'Webcam': 80, None: 0}
+    dates = pd.date_range(start='2024-01-01', periods=180).strftime('%Y-%m-%d').tolist()
+    
+    data = []
+    for _ in range(num_rows):
+        prod = random.choice(products)
         
-    # 5% chance of negative quantity (data error)
-    qty = random.randint(-2, 5) 
+        # 10% chance of a "Dirty" price
+        if random.random() < 0.1:
+            price = f"${prices[prod]}" if prod else "$0"
+        else:
+            price = prices[prod] if prod else 0
+            
+        # 5% chance of negative quantity
+        qty = random.randint(-2, 5) 
+        
+        # 5% chance of missing Customer ID
+        cust_id = random.choice([random.randint(1, 500), np.nan])
+        
+        row = {
+            'order_id': random.choice(ids),
+            'product': prod,
+            'price': price,
+            'quantity': qty,
+            'order_date': random.choice(dates),
+            'customer_id': cust_id
+        }
+        data.append(row)
+
+    df = pd.DataFrame(data)
     
-    # 5% chance of missing Customer ID
-    cust_id = random.choice([random.randint(1, 50), np.nan])
+    # Add exact duplicates (Simulating system glitch)
+    duplicate_rows = int(num_rows * 0.1)
+    df = pd.concat([df, df.sample(duplicate_rows)])
     
-    row = {
-        'order_id': random.choice(ids), # Will create duplicates later
-        'product': prod,
-        'price': price,
-        'quantity': qty,
-        'order_date': random.choice(dates),
-        'customer_id': cust_id
-    }
-    data.append(row)
+    df.to_csv(output_path, index=False)
+    logger.info(f"Created '{output_path}' with {len(df)} rows (includes {duplicate_rows} duplicates).")
+    return output_path
 
-# 2. Convert to DataFrame
-df = pd.DataFrame(data)
-
-# 3. Add exact duplicates (Simulating system glitch)
-df = pd.concat([df, df.sample(50)])
-
-# 4. Save to CSV
-df.to_csv('data/raw_sales.csv', index=False)
-
-print(f"✅ Created 'data/raw_sales.csv' with {len(df)} rows.")
-print("⚠️  Warning: This data is messy! (Duplicates, Nulls, Bad Types)")
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
+    generate_data()

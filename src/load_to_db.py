@@ -1,21 +1,39 @@
 import pandas as pd
 import sqlite3
+import logging
 
-def load_to_db():
-    print("🚚 Loading data into SQL Database...")
+logger = logging.getLogger(__name__)
+
+def load_to_db(input_path='data/clean_sales.csv', db_path='data/sales.db'):
+    logger.info("🚚 Loading data into SQL Database...")
     
-    # 1. Read the Clean Data
-    df = pd.read_csv('data/clean_sales.csv')
+    df = pd.read_csv(input_path)
+    conn = sqlite3.connect(db_path)
     
-    # 2. Connect to Database (Creates 'sales.db' if it doesn't exist)
-    conn = sqlite3.connect('data/sales.db')
+    # Create table with a strict schema instead of relying purely on pandas
+    create_table_sql = """
+    CREATE TABLE IF NOT EXISTS orders (
+        order_id INTEGER,
+        product TEXT,
+        price REAL,
+        quantity INTEGER,
+        order_date TEXT,
+        customer_id INTEGER,
+        total_amount REAL
+    );
+    """
     
-    # 3. Write Data to Table 'orders'
-    # if_exists='replace' -> Overwrite the table if we run this again
-    df.to_sql('orders', conn, if_exists='replace', index=False)
+    cursor = conn.cursor()
+    cursor.execute("DROP TABLE IF EXISTS orders;")
+    cursor.execute(create_table_sql)
+    conn.commit()
+    
+    df.to_sql('orders', conn, if_exists='append', index=False)
     
     conn.close()
-    print("✅ Data successfully loaded into 'sales.db'!")
+    logger.info(f"✅ Data successfully loaded into '{db_path}'!")
+    return db_path
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     load_to_db()
