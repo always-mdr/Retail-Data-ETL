@@ -1,9 +1,4 @@
-# Ignore the virtual environment
 venv/
 __pycache__/
-
-# Ignore data files (Code only!)
+*.pyc
 data/
-*.csv
-*.db
-.DS_Store
